@@ -43,11 +43,10 @@ if st.button("開始處理", type="primary", use_container_width=True):
             
             try:
                 response = client.models.generate_content(
-                    model="gemini-2.5-flash",
+                    model="gemini-3.8-flash",
                     contents=user_input,
                     config=types.GenerateContentConfig(
                         system_instruction=system_prompt,
-                        temperature=0.3, # 降低隨機性，讓翻譯與文法檢查更精準
                     )
                 )
                 st.markdown("### 處理結果")

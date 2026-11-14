@@ -20,7 +20,11 @@ if app_password:
         st.info("請輸入正確密碼後使用。")
         st.stop()
 
-client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
+# 每次呼叫最多等 30 秒（單位是毫秒），避免卡住好幾分鐘
+client = genai.Client(
+    api_key=st.secrets["GEMINI_API_KEY"],
+    http_options=types.HttpOptions(timeout=30_000),
+)
 
 # 依序嘗試的模型：第一個忙線或失敗時，自動改用下一個
 MODELS_TO_TRY = ["gemini-3.8-flash", "gemini-3.7-flash"]
@@ -45,6 +49,8 @@ def ask_ai(system_prompt: str, text: str):
                     contents=text,
                     config=types.GenerateContentConfig(
                         system_instruction=system_prompt,
+                        # 翻譯不需要深度推理，用 low 會快很多
+                        thinking_config=types.ThinkingConfig(thinking_level="low"),
                     ),
                 )
             except Exception as e:

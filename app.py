@@ -27,7 +27,8 @@ client = genai.Client(
 )
 
 # 依序嘗試的模型：第一個忙線或失敗時，自動改用下一個
-MODELS_TO_TRY = ["gemini-3.8-flash", "gemini-3.7-flash"]
+# Flash-Lite 最快、最不容易塞車，翻譯這種任務品質也很夠用，所以放第一個
+MODELS_TO_TRY = ["gemini-3.5-flash-lite", "gemini-3.8-flash", "gemini-3.7-flash"]
 RETRIES_PER_MODEL = 2
 
 # 4. 介面元件：情境選擇與文字輸入
@@ -44,6 +45,16 @@ def log(msg: str):
     print(msg, flush=True)
 
 
+def make_config(model_name: str, system_prompt: str):
+    """Flash-Lite 預設就是最少思考，直接用預設值；其他模型把思考等級調成 low 來加快速度。"""
+    if "lite" in model_name:
+        return types.GenerateContentConfig(system_instruction=system_prompt)
+    return types.GenerateContentConfig(
+        system_instruction=system_prompt,
+        thinking_config=types.ThinkingConfig(thinking_level="low"),
+    )
+
+
 def stream_ai(system_prompt: str, text: str):
     """以串流方式呼叫 Gemini：文字一邊產生一邊顯示。
     還沒收到任何文字就失敗時，會重試並切換備用模型。"""
@@ -56,11 +67,7 @@ def stream_ai(system_prompt: str, text: str):
                 stream = client.models.generate_content_stream(
                     model=model_name,
                     contents=text,
-                    config=types.GenerateContentConfig(
-                        system_instruction=system_prompt,
-                        # 翻譯不需要深度推理，用 low 會快很多
-                        thinking_config=types.ThinkingConfig(thinking_level="low"),
-                    ),
+                    config=make_config(model_name, system_prompt),
                 )
                 for chunk in stream:
                     if chunk.text:

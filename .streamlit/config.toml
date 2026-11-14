@@ -1,2 +1,13 @@
 [theme]
+# 深色模式：深灰底、白字
+base = "dark"
+backgroundColor = "#1E1E1E"           # 頁面底色（深灰）
+secondaryBackgroundColor = "#2B2B2B"  # 輸入框、選單的底色（稍亮的灰）
+textColor = "#FFFFFF"                 # 文字（白）
+borderColor = "#3A3A3A"               # 外框線
+
+# 主色：選項的選取圓點、輸入框聚焦外框、主按鈕都會使用這個顏色
 primaryColor = "#007BFF"
+
+# 標題字級：預設 2.75rem（44px）→ 2.125rem（34px），縮小 10px
+headingFontSizes = ["2.125rem"]

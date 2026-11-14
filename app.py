@@ -39,12 +39,21 @@ tone = st.selectbox(
 user_input = st.text_area("請輸入中文或英文：", height=150, placeholder="輸入中文將為您翻譯；輸入英文將為您檢查語意與文法...")
 
 
-def ask_ai(system_prompt: str, text: str):
-    """呼叫 Gemini，失敗時自動重試並切換備用模型。全部失敗則回傳 None。"""
+def log(msg: str):
+    """寫到 Streamlit 後台 Logs（flush=True 確保立刻出現，不會卡在緩衝區）。"""
+    print(msg, flush=True)
+
+
+def stream_ai(system_prompt: str, text: str):
+    """以串流方式呼叫 Gemini：文字一邊產生一邊顯示。
+    還沒收到任何文字就失敗時，會重試並切換備用模型。"""
     for model_name in MODELS_TO_TRY:
         for attempt in range(1, RETRIES_PER_MODEL + 1):
+            started = time.time()
+            got_text = False
             try:
-                return client.models.generate_content(
+                log(f"[{model_name}] 第 {attempt} 次呼叫開始")
+                stream = client.models.generate_content_stream(
                     model=model_name,
                     contents=text,
                     config=types.GenerateContentConfig(
@@ -53,11 +62,23 @@ def ask_ai(system_prompt: str, text: str):
                         thinking_config=types.ThinkingConfig(thinking_level="low"),
                     ),
                 )
+                for chunk in stream:
+                    if chunk.text:
+                        if not got_text:
+                            log(f"[{model_name}] {time.time() - started:.1f} 秒後開始回覆")
+                            got_text = True
+                        yield chunk.text
+                log(f"[{model_name}] 完成，共 {time.time() - started:.1f} 秒")
+                return
             except Exception as e:
-                # 錯誤細節只寫進 Streamlit 後台 Logs，不顯示在公開網頁上
-                print(f"[{model_name}] 第 {attempt} 次失敗：{e}")
+                # 錯誤細節只寫進後台 Logs，不顯示在公開網頁上
+                log(f"[{model_name}] 第 {attempt} 次失敗（{time.time() - started:.1f} 秒）：{e}")
+                if got_text:
+                    # 已經顯示一半了，不再重試，避免內容重複
+                    yield "\n\n⚠️ 回覆中斷，請再按一次「開始處理」。"
+                    return
                 time.sleep(2)
-    return None
+    yield "⚠️ 目前 AI 服務忙碌中，請稍後再試。"
 
 
 # 5. 執行按鈕與 AI 邏輯
@@ -65,25 +86,20 @@ if st.button("開始處理", type="primary", width="stretch"):
     if not user_input.strip():
         st.warning("請先輸入內容！")
     else:
+        system_prompt = f"""
+        你是一位精通中英雙語的語言專家。請自動判斷使用者的輸入語言並執行對應任務：
+
+        【情況 A：使用者輸入的是英文】
+        1. 檢查文法、拼字與時態錯誤。
+        2. 評估語意是否自然，若有「中式英文」痕跡，請提供更道地的母語者說法。
+        3. 用繁體中文條列說明修改重點與原因。
+
+        【情況 B：使用者輸入的是中文】
+        1. 將中文精準翻譯為英文，語氣必須嚴格符合以下指定情境：【{tone}】。
+        2. 提供 1 個最推薦的翻譯版本，以及 2 個不同語氣微調的備選方案。
+        3. 若有特別道地的片語或單字，用繁體中文簡單補充說明。
+        """
+
+        st.markdown("### 處理結果")
         with st.spinner("AI 思考中..."):
-            system_prompt = f"""
-            你是一位精通中英雙語的語言專家。請自動判斷使用者的輸入語言並執行對應任務：
-
-            【情況 A：使用者輸入的是英文】
-            1. 檢查文法、拼字與時態錯誤。
-            2. 評估語意是否自然，若有「中式英文」痕跡，請提供更道地的母語者說法。
-            3. 用繁體中文條列說明修改重點與原因。
-
-            【情況 B：使用者輸入的是中文】
-            1. 將中文精準翻譯為英文，語氣必須嚴格符合以下指定情境：【{tone}】。
-            2. 提供 1 個最推薦的翻譯版本，以及 2 個不同語氣微調的備選方案。
-            3. 若有特別道地的片語或單字，用繁體中文簡單補充說明。
-            """
-
-            response = ask_ai(system_prompt, user_input)
-
-        if response is not None and response.text:
-            st.markdown("### 處理結果")
-            st.markdown(response.text)
-        else:
-            st.error("目前 AI 服務忙碌中，請稍後再試。")
+            st.write_stream(stream_ai(system_prompt, user_input))

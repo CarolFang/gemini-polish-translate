@@ -11,9 +11,20 @@ st.set_page_config(page_title="英文翻譯與文法助手", page_icon="🎃", l
 st.markdown(
     """
     <style>
-    /* 標題：Streamlit 預設約 44px */
-    h1 { font-size: 32px !important; }
+    /* 標題：Streamlit 預設約 44px，縮小 8px */
+    h1 { font-size: 36px !important; }
 
+    /* 欄位標題（功能、翻譯語氣、要處理的文字）：16px */
+    [data-testid="stWidgetLabel"] p { font-size: 16px !important; }
+
+    /* 選項文字（中翻英、英文檢查、商業書信…）：16px */
+    [data-testid="stRadioGroup"] p { font-size: 16px !important; }
+
+    /* 按鈕文字（開始處理）：16px */
+    [data-testid="stBaseButton-primary"] p,
+    button[kind="primary"] p { font-size: 16px !important; }
+
+    /* 主按鈕（開始處理）改成 #007BFF */
     [data-testid="stBaseButton-primary"],
     button[kind="primary"] {
         background-color: #007BFF !important;

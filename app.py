@@ -5,9 +5,33 @@ from google import genai
 from google.genai import types
 
 # 1. 網頁基本設定
-st.set_page_config(page_title="英文翻譯與文法助手", page_icon="🌐", layout="centered")
-st.title("🌐 英文翻譯 & 文法檢查 AI")
-st.caption("輸入中文 → 翻成英文；輸入英文 → 檢查文法與道地程度")
+st.set_page_config(page_title="英文翻譯與文法助手", page_icon="🎃", layout="centered")
+
+# 自訂樣式：標題縮小、主按鈕改成藍色
+st.markdown(
+    """
+    <style>
+    /* 標題：Streamlit 預設約 44px */
+    h1 { font-size: 32px !important; }
+
+    [data-testid="stBaseButton-primary"],
+    button[kind="primary"] {
+        background-color: #007BFF !important;
+        border-color: #007BFF !important;
+        color: #FFFFFF !important;
+    }
+    [data-testid="stBaseButton-primary"]:hover,
+    button[kind="primary"]:hover {
+        background-color: #0069D9 !important;
+        border-color: #0069D9 !important;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+st.title("🎃 英文翻譯 & 文法檢查 AI")
+st.caption("中翻英：把中文翻成英文；英文檢查：檢查文法與道地程度")
 
 # 2. 安全讀取雲端設定的 API Key
 if "GEMINI_API_KEY" not in st.secrets:
@@ -42,24 +66,22 @@ TONES = {
 
 # 4. 介面元件
 mode = st.radio(
-    "功能",
-    ["自動判斷", "中翻英", "英文檢查"],
+    "**功能**",
+    ["中翻英", "英文檢查"],
     horizontal=True,
-    help="「自動判斷」會依你輸入的語言決定要翻譯還是檢查。",
 )
 
 tone_label = None
 if mode != "英文檢查":
-    tone_label = st.radio("翻譯語氣", list(TONES.keys()), horizontal=True)
+    tone_label = st.radio("**翻譯語氣**", list(TONES.keys()), horizontal=True)
 
 placeholder = {
-    "自動判斷": "例如：麻煩您在週五前回覆，謝謝。\n或：I am agree with your proposal.",
     "中翻英": "例如：麻煩您在週五前回覆，謝謝。",
     "英文檢查": "例如：I am agree with your proposal.",
 }[mode]
 
 user_input = st.text_area(
-    "要處理的文字",
+    "**要處理的文字**",
     height=160,
     max_chars=MAX_CHARS,
     placeholder=placeholder,
@@ -104,16 +126,9 @@ def build_prompt(mode: str, tone_desc: str | None) -> str:
 （如果有更像母語者的講法才提供，並用繁體中文說明；沒有就整段省略）
 """
 
-    if mode == "中翻英":
-        return rules + translate
     if mode == "英文檢查":
         return rules + check
-    return (
-        rules
-        + "先判斷 <text> 的主要語言：以中文為主就執行【中翻英】，以英文為主就執行【英文檢查】。\n"
-        + translate
-        + check
-    )
+    return rules + translate
 
 
 def make_config(model_name: str, system_prompt: str):
